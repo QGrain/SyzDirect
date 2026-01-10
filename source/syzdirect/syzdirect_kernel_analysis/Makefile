@@ -25,7 +25,7 @@ build_analyzer_func = \
 			cmake ${1}	\
 				-DCMAKE_BUILD_TYPE=Release \
 				-DLLVM_ENABLE_ASSERTIONS=ON \
-				-DCMAKE_CXX_FLAGS_RELEASE="-std=c++17 -fno-rtti -fpic -g" \
+				-DCMAKE_CXX_FLAGS_RELEASE="-std=c++17 -fno-rtti -fpic -g0" \
 		&& make -j${NPROC})
 
 all: target_analyzer

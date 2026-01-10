@@ -18,7 +18,7 @@ def PrepareSourceCode():
         checkoutcmd=f"cd {caseSrcDir} && git checkout -f {kernel_commit}"
         Config.ExecuteCMD(checkoutcmd)
         
-        applykcovcmd=f"cd {caseSrcDir} && git apply {Config.KcovPatchPath}"
+        applykcovcmd=f"cd {caseSrcDir} && git apply --3way --whitespace=fix {Config.KcovPatchPath}"
         if Config.ExecuteCMD(applykcovcmd)[1].find("patch failed") != -1:
             Config.logging.error(f"[case {caseIdx}] Fail to apply kcov patch!!! Please manually apply!!!")
         
@@ -83,7 +83,7 @@ exec $CLANG "$@"
 
         
         
-        compile_command = f"cd {Config.getSrcDirByCase(caseIdx)} && git checkout -- scripts/Makefile.kcov && make clean && make mrproper && yes | make CC={Config.EmitScriptPath} O={caseBCDir} oldconfig && make CC=\'{Config.EmitScriptPath}\' O={caseBCDir} -j{Config.CPUNum}"
+        compile_command = f"cd {Config.getSrcDirByCase(caseIdx)} && git checkout -- scripts/Makefile.kcov && make clean && make mrproper && make CC={Config.EmitScriptPath} O={caseBCDir} olddefconfig && make CC=\'{Config.EmitScriptPath}\' O={caseBCDir} -j{Config.CPUNum}"
         # print(Config.ExecuteCMD(compile_command))
         os.system(compile_command)
         if IsCompilationSuccessfulByCase(caseBCDir):

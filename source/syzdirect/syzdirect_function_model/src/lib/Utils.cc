@@ -7,6 +7,7 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/ADT/StringExtras.h>
+#include <llvm/ADT/StringRef.h>
 #include <llvm/Analysis/CallGraph.h>
 #include "llvm/IR/Function.h"
 #include "llvm/Support/raw_ostream.h"  
@@ -30,6 +31,14 @@ bool endsWith(std::string const & value, std::string const & ending)
 {
     if (ending.size() > value.size()) return false;
     return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
+// Minimal safety wrapper: avoid LLVM abort when struct layout/index mismatches.
+Constant* SafeConstStructGetOperand(ConstantStruct* CS, unsigned Idx) {
+    if (!CS) return nullptr;
+    // ConstantStruct::getOperand will assert if Idx is out of range.
+    if (Idx >= CS->getNumOperands()) return nullptr;
+    return CS->getOperand(Idx);
 }
 
 int getIntValue(Value* value) {

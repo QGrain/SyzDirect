@@ -13,13 +13,13 @@ import Config
 def MultirunFuzzer():
     runItems=[]
     CLEAN_IMAGE_PATH = Config.CleanImageTemplatePath
+    runCount = 1
     for datapoint in Config.datapoints:
     
         caseIdx=datapoint['idx']
         template_config=Config.LoadJson(Config.TemplateConfigPath)
         assert template_config, "Fail to load fuzzing config template "
         template_config["sshkey"]=Config.KeyPath
-        runCount = 1
 
         # first build it again
         syzdirect_path = Config.FuzzerDir
@@ -64,7 +64,7 @@ def MultirunFuzzer():
 
                 config["image"] = CLEAN_IMAGE_PATH
                 config["workdir"] = subWorkDir
-                config["http"] = f"0.0.0.0:{2345+runCount}"
+                config["http"] = f"0.0.0.0:{12345+runCount}"
                 config['vm']['kernel'] = kernelImage
                 config['syzkaller'] = syzkaller_path
                 config['hitindex']=int(xidx)

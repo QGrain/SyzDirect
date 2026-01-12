@@ -17,6 +17,8 @@
 
 string getValueAsOperand(Value* v);
 
+Constant* SafeConstStructGetOperand(ConstantStruct* CS, unsigned Idx);
+
 int getIntValue(Value* value);
 
 string getDeviceString(Value *currVal);

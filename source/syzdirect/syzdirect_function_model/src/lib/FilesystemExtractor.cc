@@ -229,8 +229,8 @@ Function* FilesystemExtractorPass::findGetTreeFromInitFsCtx(Function* initFsCtx)
         if(globalVar != nullptr)
         {
             ConstantStruct* constStruct = dyn_cast<ConstantStruct>(globalVar->getInitializer());
-            Constant* getTreeFuncPtr = constStruct->getOperand(Ctx->StructFieldIdx["fs_context_operations"]["get_tree"]);
-            if(!getTreeFuncPtr->isNullValue())
+            Constant* getTreeFuncPtr = SafeConstStructGetOperand(constStruct, Ctx->StructFieldIdx["fs_context_operations"]["get_tree"]);
+            if(getTreeFuncPtr && !getTreeFuncPtr->isNullValue())
             {
                 Function* getTree = dyn_cast<Function>(getTreeFuncPtr);
                 if(getTree->getInstructionCount() == 0)
@@ -360,14 +360,14 @@ void FilesystemExtractorPass::HandleFsTypeStruct(GlobalVariable* globalVar, File
     outs() << "[+] global variable defination: " << *globalVar << "\n";
     outs() << "[+] type: " << globalVar->getValueType()->getStructName() << "\n";
     // constStruct->ge
-    Constant* filesystemNameVal = constStruct->getOperand(Ctx->StructFieldIdx["file_system_type"]["name"]);
-    string filesystemName = getFilesystemNameString(filesystemNameVal);
+    Constant* filesystemNameVal = SafeConstStructGetOperand(constStruct, Ctx->StructFieldIdx["file_system_type"]["name"]);
+    string filesystemName = filesystemNameVal ? getFilesystemNameString(filesystemNameVal) : "FAIL_TO_GET_FSNAME";
     outs() << "str: " << filesystemName << "\n";
     filesystemInfoItem->name = filesystemName;
     filesystemInfoItem->filesystemTypeStruct = globalVar;
-    Constant* mountFuncPtr = constStruct->getOperand(Ctx->StructFieldIdx["file_system_type"]["mount"]);
-    Constant* initfsctxFuncPtr = constStruct->getOperand(Ctx->StructFieldIdx["file_system_type"]["init_fs_context"]);
-    if(!mountFuncPtr->isNullValue())
+    Constant* mountFuncPtr = SafeConstStructGetOperand(constStruct, Ctx->StructFieldIdx["file_system_type"]["mount"]);
+    Constant* initfsctxFuncPtr = SafeConstStructGetOperand(constStruct, Ctx->StructFieldIdx["file_system_type"]["init_fs_context"]);
+    if(mountFuncPtr && !mountFuncPtr->isNullValue())
     {
         Function* mountFunc = dyn_cast<Function>(mountFuncPtr);
         if(mountFunc->getInstructionCount() == 0)
@@ -423,7 +423,7 @@ void FilesystemExtractorPass::HandleFsTypeStruct(GlobalVariable* globalVar, File
             }
         }
     }
-    if(!initfsctxFuncPtr->isNullValue())
+    if(initfsctxFuncPtr && !initfsctxFuncPtr->isNullValue())
     {
         Function* initfsctxFunc = dyn_cast<Function>(initfsctxFuncPtr);
         if(initfsctxFunc->getInstructionCount() == 0)
@@ -501,11 +501,11 @@ vector<pair<string, Function*>> FilesystemExtractorPass::getHandlerFromFileOpera
         constStruct = dyn_cast<ConstantStruct>(Ctx->GlobalStructMap[globalVar->getName().str()]);
     } 
     if (!constStruct) return res;
-    Constant* handlerRead = constStruct->getOperand(Ctx->StructFieldIdx["file_operations"]["read"]);
-    Constant* handlerWrite = constStruct->getOperand(Ctx->StructFieldIdx["file_operations"]["write"]);
-    Constant* handlerIoctl = constStruct->getOperand(Ctx->StructFieldIdx["file_operations"]["unlocked_ioctl"]);
-    Constant* handlerOpen = constStruct->getOperand(Ctx->StructFieldIdx["file_operations"]["open"]);
-    Constant* handlerMmap = constStruct->getOperand(Ctx->StructFieldIdx["file_operations"]["mmap"]);
+    Constant* handlerRead = SafeConstStructGetOperand(constStruct, Ctx->StructFieldIdx["file_operations"]["read"]);
+    Constant* handlerWrite = SafeConstStructGetOperand(constStruct, Ctx->StructFieldIdx["file_operations"]["write"]);
+    Constant* handlerIoctl = SafeConstStructGetOperand(constStruct, Ctx->StructFieldIdx["file_operations"]["unlocked_ioctl"]);
+    Constant* handlerOpen = SafeConstStructGetOperand(constStruct, Ctx->StructFieldIdx["file_operations"]["open"]);
+    Constant* handlerMmap = SafeConstStructGetOperand(constStruct, Ctx->StructFieldIdx["file_operations"]["mmap"]);
     if (handlerRead && isa<Function>(handlerRead))
     {
         Function* readFunc = dyn_cast<Function>(handlerRead);
@@ -540,7 +540,7 @@ vector<pair<string, Function*>> FilesystemExtractorPass::getHandlerFromFileOpera
     }
     else
     {
-        handlerWrite = constStruct->getOperand(Ctx->StructFieldIdx["file_operations"]["write_iter"]);
+        handlerWrite = SafeConstStructGetOperand(constStruct, Ctx->StructFieldIdx["file_operations"]["write_iter"]);
         if(handlerWrite && isa<Function>(handlerWrite))
         {
             Function* writeFunc = dyn_cast<Function>(handlerWrite);
@@ -627,7 +627,8 @@ vector<pair<string, Function*>> FilesystemExtractorPass::getHandlerFromASOperati
     auto &asStructMap = Ctx->StructFieldIdx["address_space_operations"];
 
     for (auto readFuncName: {"readpage", "readpages"}) {
-        Constant* handler = constStruct->getOperand(asStructMap[readFuncName]);
+        Constant* handler = SafeConstStructGetOperand(constStruct, asStructMap[readFuncName]);
+        
         if (!handler || !isa<Function>(handler)) {
             continue;
         }
@@ -938,15 +939,17 @@ bool FilesystemExtractorPass::doModulePass(Module* M)
             outs() << "what???? should have " << handler->getName().str() << " in module: " << M->getName() << '\n' ;
             continue;
         }
-        Constant* handlerGet = constStruct->getOperand(xattrHandlerStruc["get"]);
-        Constant* handlerSet = constStruct->getOperand(xattrHandlerStruc["set"]);
+        Constant* handlerGet = SafeConstStructGetOperand(constStruct, xattrHandlerStruc["get"]);
+        
+        Constant* handlerSet = SafeConstStructGetOperand(constStruct, xattrHandlerStruc["set"]);
 
         for (auto iterIdx: {0, 1}) {
             auto fieldName = "name"; 
             if (iterIdx == 1) {
                 fieldName = "prefix";
             }
-            Constant* strConst = constStruct->getOperand(xattrHandlerStruc[fieldName]);
+            Constant* strConst = SafeConstStructGetOperand(constStruct, xattrHandlerStruc[fieldName]);
+            
             if (!strConst) {
                 outs() << "no field: " << fieldName << '\n';
                 continue;
@@ -982,7 +985,7 @@ bool FilesystemExtractorPass::doModulePass(Module* M)
             }
             vector<pair<string, Function*>> SyscallHandler; 
             for (auto &handlerItem: xattrHandlerSyscallMap) {
-                Constant* handlerPtr = constStruct->getOperand(xattrHandlerStruc[handlerItem.first]);
+                Constant* handlerPtr = SafeConstStructGetOperand(constStruct, xattrHandlerStruc[handlerItem.first]);
                 if (!handlerPtr || !isa<Function>(handlerPtr)) {
                     continue;
                 }

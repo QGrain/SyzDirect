@@ -857,7 +857,8 @@ map<unsigned, Function*> NetworkInterfaceExtractorPass::getNfSubsysHandlers(Cons
             if(cbStruct == nullptr)
                 continue;
             Function* handler = dyn_cast<Function>(cbStruct->getOperand(Ctx->StructFieldIdx["nfnl_callback"]["call"]));
-            res[i] = handler;
+            if(handler != nullptr)
+                res[i] = handler;
         }
     }
     return res;
@@ -1131,6 +1132,11 @@ void NetworkInterfaceExtractorPass::ProcessInetRegisterProtosw(CallInst* callIns
     // struct inet_protosw *
     auto protoswPtr = callInst->getArgOperand(0);
     outs() << "protoswPtr: " << *protoswPtr << "\n";
+    // skip non constant (such as PHI)
+    if (!isa<Constant>(protoswPtr)) {
+        outs() << "[-] skip non-constant protoswPtr\n";
+        return;
+    }
     if (auto protoswGV = dyn_cast<GlobalVariable>(protoswPtr)) {
         if (protoswGV->hasInitializer()) {
             auto initializer = protoswGV->getInitializer();
@@ -1451,6 +1457,10 @@ bool NetworkInterfaceExtractorPass::doFinalization(Module * M) {
         }
         if (g->getName() == "inetsw_array") {
             auto inetswArray = dyn_cast<ConstantArray>(g->getInitializer());
+            if (!inetswArray) {
+                outs() << "[-] inetsw_array initializer is not ConstantArray: " << *g->getInitializer() << "\n";
+                continue;
+            }
             for (int i = 0; i < inetswArray->getNumOperands(); i++) {
                 auto inetsw = dyn_cast<ConstantStruct>(inetswArray->getOperand(i));
                 ProcessInetProtosw(inetsw);

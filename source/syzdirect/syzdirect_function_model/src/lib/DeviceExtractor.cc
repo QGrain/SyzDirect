@@ -234,7 +234,7 @@ void DeviceExtractorPass::ProcessMiscDeviceInit(CallInst* callInst) {
     deviceInfoItem->name = "";
     auto arg = callInst->getArgOperand(0);
     if (auto gv = dyn_cast<GlobalVariable>(arg)) {
-        if (gv->getValueType()->isStructTy()) {
+        if (gv->getValueType()->isStructTy() && gv->hasInitializer()) {
             if (auto constStruct = dyn_cast<ConstantStruct>(gv->getInitializer())) {
                 outs() << *constStruct << "\n";
                 auto minorVal = constStruct->getOperand(0);

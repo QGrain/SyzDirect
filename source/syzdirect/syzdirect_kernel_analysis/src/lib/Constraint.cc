@@ -180,14 +180,17 @@ bool ConstraintPass::doModulePass(Module * M) {
             if (funcName=="bt_sock_register"){
               for(User* user:F->users()) {
                 if(CallInst* callInst = dyn_cast<CallInst>(user)) {
-                    auto theProto=dyn_cast<Constant>(callInst->getOperand(0));
-                    auto theOps=dyn_cast<GlobalVariable>(callInst->getOperand(1));
+                    if (callInst->arg_size() < 2) continue;
+                    auto theProto=dyn_cast<Constant>(callInst->getArgOperand(0));
+                    auto theOps=dyn_cast<GlobalVariable>(callInst->getArgOperand(1));
+                    if(!theProto || !theOps) continue;
                     OP << "callsite of bt_sock_register: " << *callInst << "\n";
                     OP << "extracted proto: " << *theProto << "|" << "theOps: " << *theOps << "\n";
                     if(theOps->hasInitializer()){
                       auto constStruct = dyn_cast<ConstantStruct>(theOps->getInitializer());
+                      if (constStruct->getNumOperands() <= 1) continue;
                       Constant* createPtr=constStruct->getOperand(1);
-                      if(createPtr->isNullValue())
+                      if(createPtr && createPtr->isNullValue())
                         continue;
                       Function* funcPtr= dyn_cast<Function>(createPtr);
                       string functionPointerName = funcPtr->getName().str();

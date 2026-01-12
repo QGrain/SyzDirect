@@ -54,6 +54,8 @@ bool TypeInitializerPass::doInitialization(Module *M) {
 
 				if (StructType *SVT = dyn_cast<StructType>(VT)) {
 					string ValueName = static_cast<string>(VI->getName());
+					if(SVT->isLiteral())
+						continue;
 					string StructName = static_cast<string>(SVT->getName());
 					VnameToTypenameMap.insert(pair<string, string>(ValueName,StructName));
 				}
